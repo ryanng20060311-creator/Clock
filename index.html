@@ -57,6 +57,10 @@ main{display:grid;gap:28px;padding:12px 20px 28px;max-width:1500px;margin:0 auto
 .now .left{font-size:clamp(3rem,9vw,6.5rem);font-weight:700;line-height:1}
 .now .cap{font-size:1.1rem;opacity:.85;margin-bottom:4px}
 .now:not(.live) .left{display:none}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.endb{flex-shrink:0;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.75);color:#fff;border-radius:999px;padding:12px 22px;font-weight:700;font-size:1.05rem;min-height:48px}
+.endb.arm{background:#fff;color:var(--c)}
+.now:not(.live) .endb{display:none}
 .now:not(.live) .cap{display:none}
 .flash{animation:flash 1s ease-in-out 4}
 @keyframes flash{50%{box-shadow:0 0 0 14px var(--c,var(--accent))}}
@@ -76,7 +80,7 @@ main{display:grid;gap:28px;padding:12px 20px 28px;max-width:1500px;margin:0 auto
 .dn input{flex:1;min-width:0;background:var(--bg);border:1.5px solid var(--line);border-radius:999px;padding:8px 14px;font-size:1rem;min-height:40px}
 .dn .chip{padding:8px 14px}
 .f[hidden]{display:none}
-.dy.mode button{width:auto;border-radius:999px;padding:0 22px}
+.dy.mode button{width:auto;border-radius:999px;padding:0 18px}
 ul{list-style:none;margin:0;padding:0}
 .item{display:grid;grid-template-columns:auto 1fr;gap:2px 16px;padding:14px 12px 14px 16px;border-left:6px solid var(--c);border-radius:0 14px 14px 0;cursor:pointer;margin-bottom:6px}
 .item:hover{background:color-mix(in srgb,var(--surface) 70%,transparent)}
@@ -110,6 +114,8 @@ ul{list-style:none;margin:0;padding:0}
 .acts .ok{background:var(--accent);border-color:var(--accent);color:var(--bg)}
 .acts .del{margin-right:auto;color:#D14343;border-color:#D14343}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.f textarea{width:100%;background:var(--bg);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;font-size:1.1rem;resize:vertical;font-family:inherit}
+.hint{color:var(--muted);font-size:.9rem;line-height:1.6;margin:0 0 10px}
 </style>
 </head>
 <body>
@@ -120,6 +126,7 @@ ul{list-style:none;margin:0;padding:0}
   <button class="chip" id="bSnd" aria-pressed="true">提醒音</button>
   <button class="chip" id="bWake" aria-pressed="false">螢幕常亮</button>
   <button class="chip" id="bFull" aria-pressed="false">全螢幕</button>
+  <button class="chip" id="bFix" aria-label="修改或回報問題">🔧 修改</button>
 </div>
 
 <main>
@@ -129,9 +136,12 @@ ul{list-style:none;margin:0;padding:0}
 
     <div class="now" id="now">
       <div class="fill" id="fill"></div>
-      <div>
-        <div class="name" id="nName">目前沒有行程</div>
-        <div class="range num" id="nRange"></div>
+      <div class="top">
+        <div>
+          <div class="name" id="nName">目前沒有行程</div>
+          <div class="range num" id="nRange"></div>
+        </div>
+        <button class="endb" id="bEnd">提前結束</button>
       </div>
       <div>
         <div class="cap">這個行程還剩</div>
@@ -166,6 +176,21 @@ ul{list-style:none;margin:0;padding:0}
 
 <div class="toast" id="toast" hidden></div>
 
+<div class="ov" id="ov2" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fxT">
+    <h3 id="fxT">想修改或回報問題？</h3>
+    <label class="f"><span>你想改什麼？例如：字再大一點、多一個按鈕</span><textarea id="fxText" rows="4"></textarea></label>
+    <p class="hint">按「複製給 Claude」，會把這個 App 的說明、版本和你寫的內容一起複製。到 Claude 貼上，再附上「檔案」App 裡的 index.html，Claude 就能直接幫你改。開啟 Claude 需要網路。</p>
+    <p class="hint" id="fxVer"></p>
+    <p class="hint" id="fxMsg" role="status" style="color:var(--accent)"></p>
+    <div class="acts">
+      <button id="fxClose">關閉</button>
+      <button id="fxOpen">開啟 Claude</button>
+      <button class="ok" id="fxCopy">複製給 Claude</button>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="ov" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sTitle">
     <h3 id="sTitle">新增行程</h3>
@@ -175,7 +200,7 @@ ul{list-style:none;margin:0;padding:0}
       <label class="f"><span>結束</span><input id="fEnd" type="time" value="10:00"></label>
     </div>
     <div class="f"><span>顏色</span><div class="sw" id="fSw"></div></div>
-    <div class="f"><span>什麼時候</span><div class="dy mode"><button id="mRep">重複</button><button id="mDate">指定日期</button></div></div>
+    <div class="f"><span>什麼時候</span><div class="dy mode"><button id="mToday">今天</button><button id="mTom">明天</button><button id="mDate">指定日期</button><button id="mRep">重複</button></div></div>
     <div class="f" id="repBox"><span>重複的日子</span><div class="dy" id="fDy"></div></div>
     <label class="f" id="dateBox" hidden><span>日期（只在這一天出現）</span><input id="fDate" type="date"></label>
     <p class="err" id="fErr" role="alert"></p>
@@ -189,10 +214,14 @@ ul{list-style:none;margin:0;padding:0}
 
 <script>
 const $=s=>document.querySelector(s);
+const APP_VER='v4（2026-11-13）';
+const ERRS=[];
+window.addEventListener('error',e=>{ERRS.push((e.message||'錯誤')+' @'+(e.lineno||'?'));if(ERRS.length>5)ERRS.shift()});
+window.addEventListener('unhandledrejection',e=>{ERRS.push(String(e.reason&&e.reason.message||e.reason||'錯誤'));if(ERRS.length>5)ERRS.shift()});
 const COLORS=['#C8431F','#A86F00','#1F7A52','#2563C9','#7A45C4','#C2306A'];
 const DAYN=['日','一','二','三','四','五','六'];
 const ALL=[0,1,2,3,4,5,6];
-let S={events:[],sec:true,h12:false,sound:true};
+let S={events:[],sec:true,h12:false,sound:true,ends:{}};
 const uid=()=>Math.random().toString(36).slice(2,9);
 function dstr(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}
 function todayStr(){return dstr(new Date())}
@@ -247,6 +276,8 @@ function occ(now){
       const s=new Date(y,mo,dt+d,sh,sm).getTime();
       let t=new Date(y,mo,dt+d,eh,em).getTime();
       if(t<=s)t=new Date(y,mo,dt+d+1,eh,em).getTime();
+      const ov=S.ends&&S.ends[e.id+':'+s];
+      if(ov&&ov<t)t=ov;
       out.push({e,s,t,d});
     }
   }
@@ -337,7 +368,7 @@ function tick(){
   const cid=cur?cur.e.id+':'+cur.s:null;
   if(cid!==lastId){
     if(!first&&cid)fire(cur.e);
-    lastId=cid;curEvId=cur?cur.e.id:null;
+    lastId=cid;curEvId=cur?cur.e.id:null;disarm();
     renderList(curEvId);
   }
   first=false;
@@ -373,15 +404,20 @@ function tick(){
 function resync(){first=true;lastId=null;tick();}
 
 /* ---------- editor ---------- */
-let editId=null,selColor=COLORS[3],selDays=[...ALL],selMode='rep';
+let editId=null,selColor=COLORS[3],selDays=[...ALL],selMode='rep',forceDate=false;
+function plusDay(n){const d=new Date();d.setDate(d.getDate()+n);return dstr(d)}
 function drawMode(){
-  $('#mRep').setAttribute('aria-pressed',selMode==='rep');
-  $('#mDate').setAttribute('aria-pressed',selMode==='date');
+  const fd=$('#fDate').value;
+  const act=selMode==='rep'?'rep':forceDate?'date':fd===todayStr()?'today':fd===plusDay(1)?'tom':'date';
+  [['#mRep','rep'],['#mToday','today'],['#mTom','tom'],['#mDate','date']].forEach(([s,k])=>$(s).setAttribute('aria-pressed',act===k));
   $('#repBox').hidden=selMode!=='rep';
   $('#dateBox').hidden=selMode!=='date';
 }
-$('#mRep').onclick=()=>{selMode='rep';drawMode()};
-$('#mDate').onclick=()=>{selMode='date';drawMode()};
+$('#mRep').onclick=()=>{selMode='rep';forceDate=false;drawMode()};
+$('#mToday').onclick=()=>{selMode='date';forceDate=false;$('#fDate').value=todayStr();drawMode()};
+$('#mTom').onclick=()=>{selMode='date';forceDate=false;$('#fDate').value=plusDay(1);drawMode()};
+$('#mDate').onclick=()=>{selMode='date';forceDate=true;drawMode()};
+$('#fDate').onchange=()=>{forceDate=false;drawMode()};
 function drawSw(){
   const w=$('#fSw');w.innerHTML='';
   COLORS.forEach(c=>{
@@ -411,7 +447,7 @@ function openEdit(id){
   $('#fEnd').value=e?e.end:'10:00';
   selColor=e?e.color:COLORS[(S.events.length)%COLORS.length];
   selDays=e?[...(e.days||ALL)]:[...ALL];
-  selMode=e?(e.date?'date':'rep'):(viewDate!==todayStr()?'date':'rep');
+  selMode=e?(e.date?'date':'rep'):'date';forceDate=false;
   $('#fDate').value=(e&&e.date)?e.date:viewDate;
   $('#fDel').hidden=!e;$('#fErr').textContent='';
   drawSw();drawDy();drawMode();
@@ -471,6 +507,54 @@ $('#bFull').onclick=()=>{
   }catch(e){}
 };
 document.addEventListener('fullscreenchange',()=>$('#bFull').setAttribute('aria-pressed',!!document.fullscreenElement));
+
+function fxBuild(){
+  const need=$('#fxText').value.trim()||'（請在這裡寫下你想改的地方）';
+  const st=['行程數：'+S.events.length,S.h12?'12 小時制':'24 小時制',S.sec?'顯示秒數':'隱藏秒數',S.sound?'提醒音開':'提醒音關'].join('、');
+  const er=ERRS.length?'\n最近的錯誤：'+ERRS.join('；'):'';
+  return '我之前請你做了一個「行程時鐘」網頁 App，放在我自己的 GitHub Pages，可以離線使用（PWA，檔案是 index.html 和 sw.js，行程存在裝置的瀏覽器裡）。\n'
+   +'目前功能：大數字時鐘與日期、目前行程的剩餘時間與進度條、下一個行程倒數、行程可設每天、指定星期或指定日期、新增時有今天和明天按鈕、提前結束、行程開始時的提示音、顯示秒數與 12／24 小時制切換、螢幕常亮與全螢幕。\n'
+   +'版本：'+APP_VER+'\n裝置狀態：'+st+er+'\n\n我想修改的是：\n'+need+'\n\n我會附上目前的 index.html。請直接修改它，並給我要上傳到 GitHub 的 index.html（如果 sw.js 也有改，也一起給我）。';
+}
+async function fxCopy(){
+  const m=fxBuild();
+  try{
+    await navigator.clipboard.writeText(m);
+    $('#fxMsg').textContent='已複製。到 Claude 貼上，並附上 index.html 檔案。';
+  }catch(e){
+    const ta=$('#fxText');ta.value=m;ta.focus();ta.select();
+    $('#fxMsg').textContent='無法自動複製。請長按上面的文字，選「全選」再「拷貝」。';
+  }
+}
+$('#bFix').onclick=()=>{$('#fxVer').textContent='目前版本：'+APP_VER;$('#fxMsg').textContent='';$('#ov2').hidden=false;setTimeout(()=>$('#fxText').focus(),50)};
+$('#fxClose').onclick=()=>{$('#ov2').hidden=true};
+$('#ov2').onclick=ev=>{if(ev.target.id==='ov2')$('#ov2').hidden=true};
+$('#fxCopy').onclick=fxCopy;
+$('#fxOpen').onclick=()=>{fxCopy();window.open('https://claude.ai/new','_blank','noopener')};
+
+let armT=null;
+function disarm(){clearTimeout(armT);const b=$('#bEnd');b.classList.remove('arm');b.textContent='提前結束'}
+function showMsg(m){
+  const el=$('#toast');el.style.setProperty('--c','#0F766E');el.textContent=m;el.hidden=false;
+  clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,4000);
+}
+$('#bEnd').onclick=()=>{
+  const b=$('#bEnd');
+  if(!b.classList.contains('arm')){
+    b.classList.add('arm');b.textContent='再按一次確定結束';
+    clearTimeout(armT);armT=setTimeout(disarm,3500);return;
+  }
+  disarm();
+  const now=new Date(),n=now.getTime();
+  const cur=occ(now).filter(x=>x.s<=n&&n<x.t).sort((a,b)=>b.s-a.s)[0];
+  if(!cur)return;
+  S.ends[cur.e.id+':'+cur.s]=n;
+  const lim=n-3*864e5;
+  Object.keys(S.ends).forEach(k=>{if(+k.split(':')[1]<lim)delete S.ends[k]});
+  save();
+  showMsg('已提前結束：'+cur.e.name);
+  tick();
+};
 
 function shiftDay(n){
   const [y,m,d]=viewDate.split('-').map(Number);

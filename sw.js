@@ -1,4 +1,4 @@
-const CACHE='schedule-clock-v2';
+const CACHE='schedule-clock-v4';
 const FILES=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./apple-touch-icon.png'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>Promise.all(FILES.map(f=>c.add(f).catch(()=>{})))));
