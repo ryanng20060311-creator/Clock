@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>行程時鐘</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="行程時鐘">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0F766E">
+
+<style>
+:root{
+  --bg:#EDF1EF;--surface:#FFFFFF;--text:#14302F;--muted:#5D7573;--line:#CBD8D5;--accent:#0F766E;--onc:#FFFFFF;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D2022;--surface:#15302F;--text:#E8F1EF;--muted:#8FADAA;--line:#274644;--accent:#4FD1C0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D2022;--surface:#15302F;--text:#E8F1EF;--muted:#8FADAA;--line:#274644;--accent:#4FD1C0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;min-height:100vh}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.num{font-family:"Space Grotesk","Noto Sans TC",system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+.bar{display:flex;flex-wrap:wrap;gap:8px;padding:14px 20px 0;justify-content:flex-end}
+.chip{border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:8px 16px;font-size:.95rem;min-height:40px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+
+main{display:grid;gap:28px;padding:12px 20px 28px;max-width:1500px;margin:0 auto}
+@media (min-width:900px){main{grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr);align-items:start}}
+
+.clock{display:flex;align-items:baseline;gap:.4em;flex-wrap:wrap}
+#time{font-weight:700;line-height:1;font-size:clamp(4rem,15vw,10rem)}
+@media (min-width:900px){#time{font-size:clamp(4rem,9.5vw,10rem)}}
+#period{font-size:clamp(1.4rem,3vw,2.2rem);color:var(--muted);font-weight:500}
+#date{color:var(--muted);font-size:clamp(1.1rem,2.2vw,1.6rem);margin:6px 0 20px}
+
+.now{position:relative;overflow:hidden;border-radius:28px;padding:28px 32px;background:var(--surface);border:1.5px solid var(--line);min-height:250px;display:flex;flex-direction:column;justify-content:space-between;gap:12px}
+.now.live{background:var(--c);border-color:var(--c);color:var(--onc)}
+.fill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(0,0,0,.24);transition:width .5s linear}
+.now>*:not(.fill){position:relative}
+.now .name{font-size:clamp(2rem,5vw,3.6rem);font-weight:700;line-height:1.15;overflow-wrap:anywhere}
+.now .range{font-size:1.15rem;opacity:.85}
+.now .left{font-size:clamp(3rem,9vw,6.5rem);font-weight:700;line-height:1}
+.now .cap{font-size:1.1rem;opacity:.85;margin-bottom:4px}
+.now:not(.live) .left{display:none}
+.now:not(.live) .cap{display:none}
+.flash{animation:flash 1s ease-in-out 4}
+@keyframes flash{50%{box-shadow:0 0 0 14px var(--c,var(--accent))}}
+@media (prefers-reduced-motion:reduce){.flash{animation:none}.fill{transition:none}}
+
+.next{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px;padding:20px 4px 0}
+.next .lb{color:var(--muted);font-size:1.05rem}
+.next .nn{font-size:clamp(1.4rem,3vw,2rem);font-weight:700;overflow-wrap:anywhere}
+.next .at{color:var(--muted);font-size:1.1rem}
+.next .cd{font-size:clamp(1.8rem,4vw,3rem);font-weight:700;color:var(--accent)}
+.next .grp{display:flex;flex-direction:column;gap:2px}
+
+.plan h2{margin:0;font-size:1.3rem}
+.plan .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.add{background:var(--accent);color:var(--bg);border:0;border-radius:999px;padding:10px 20px;font-weight:700;min-height:44px}
+.dn{display:flex;gap:8px;align-items:center;margin-bottom:14px}
+.dn input{flex:1;min-width:0;background:var(--bg);border:1.5px solid var(--line);border-radius:999px;padding:8px 14px;font-size:1rem;min-height:40px}
+.dn .chip{padding:8px 14px}
+.f[hidden]{display:none}
+.dy.mode button{width:auto;border-radius:999px;padding:0 22px}
+ul{list-style:none;margin:0;padding:0}
+.item{display:grid;grid-template-columns:auto 1fr;gap:2px 16px;padding:14px 12px 14px 16px;border-left:6px solid var(--c);border-radius:0 14px 14px 0;cursor:pointer;margin-bottom:6px}
+.item:hover{background:color-mix(in srgb,var(--surface) 70%,transparent)}
+.item.on{background:var(--surface);outline:2px solid var(--c);outline-offset:-2px}
+.item .t{grid-row:span 2;font-weight:700;font-size:1.1rem;line-height:1.35;text-align:right;min-width:3.4em}
+.item .t span{font-weight:500;color:var(--muted)}
+.item .n{font-weight:700;font-size:1.1rem;overflow-wrap:anywhere}
+.item .d{color:var(--muted);font-size:.9rem}
+.empty{color:var(--muted);padding:12px 4px;line-height:1.6}
+
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 16px);transform:translateX(-50%);background:var(--c);color:#fff;border-radius:20px;padding:18px 32px;font-size:clamp(1.3rem,3vw,2rem);font-weight:700;z-index:30;box-shadow:0 10px 40px rgba(0,0,0,.35);max-width:92vw;text-align:center}
+.toast[hidden]{display:none}
+
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.ov[hidden]{display:none}
+.sheet{background:var(--surface);width:min(560px,100%);border-radius:28px 28px 0 0;padding:24px 24px calc(24px + env(safe-area-inset-bottom,0px));max-height:92vh;overflow:auto}
+@media (min-width:700px){.ov{align-items:center}.sheet{border-radius:28px}}
+.sheet h3{margin:0 0 16px;font-size:1.3rem}
+.f{display:block;margin-bottom:16px}
+.f>span{display:block;color:var(--muted);font-size:.95rem;margin-bottom:6px}
+.f input{width:100%;background:var(--bg);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;font-size:1.15rem}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sw,.dy{display:flex;flex-wrap:wrap;gap:10px}
+.sw button{width:44px;height:44px;border-radius:50%;border:3px solid transparent;background:var(--c)}
+.sw button[aria-pressed="true"]{border-color:var(--text)}
+.dy button{width:46px;height:46px;border-radius:50%;border:1.5px solid var(--line);background:transparent}
+.dy button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+.err{color:#D14343;min-height:1.4em;margin:0 0 8px}
+.acts{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.acts button{border-radius:999px;padding:12px 24px;font-weight:700;border:1.5px solid var(--line);background:transparent;min-height:48px}
+.acts .ok{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.acts .del{margin-right:auto;color:#D14343;border-color:#D14343}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="bar">
+  <span id="offl" style="margin-right:auto;align-self:center;color:var(--muted);font-size:.9rem"></span>
+  <button class="chip" id="bSec" aria-pressed="true">顯示秒數</button>
+  <button class="chip" id="bH12" aria-pressed="false">12 小時制</button>
+  <button class="chip" id="bSnd" aria-pressed="true">提醒音</button>
+  <button class="chip" id="bWake" aria-pressed="false">螢幕常亮</button>
+  <button class="chip" id="bFull" aria-pressed="false">全螢幕</button>
+</div>
+
+<main>
+  <section>
+    <div class="clock num"><div id="time">00:00:00</div><div id="period"></div></div>
+    <div id="date"></div>
+
+    <div class="now" id="now">
+      <div class="fill" id="fill"></div>
+      <div>
+        <div class="name" id="nName">目前沒有行程</div>
+        <div class="range num" id="nRange"></div>
+      </div>
+      <div>
+        <div class="cap">這個行程還剩</div>
+        <div class="left num" id="nLeft"></div>
+      </div>
+    </div>
+
+    <div class="next">
+      <div class="grp">
+        <div class="lb">下一個行程</div>
+        <div class="nn" id="xName">—</div>
+        <div class="at num" id="xAt"></div>
+      </div>
+      <div class="grp" style="text-align:right">
+        <div class="lb" id="xLb">距離開始</div>
+        <div class="cd num" id="xCd"></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="plan">
+    <div class="hd"><h2 id="pTitle">今日行程</h2><button class="add" id="bAdd">新增行程</button></div>
+    <div class="dn">
+      <button class="chip" id="dPrev" aria-label="前一天">‹</button>
+      <input type="date" id="dPick" aria-label="選擇日期">
+      <button class="chip" id="dNext" aria-label="後一天">›</button>
+      <button class="chip" id="dToday">今天</button>
+    </div>
+    <ul id="list"></ul>
+  </aside>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<div class="ov" id="ov" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sTitle">
+    <h3 id="sTitle">新增行程</h3>
+    <label class="f"><span>名稱</span><input id="fName" maxlength="40" placeholder="例如：讀書、運動、吃藥"></label>
+    <div class="row">
+      <label class="f"><span>開始</span><input id="fStart" type="time" value="09:00"></label>
+      <label class="f"><span>結束</span><input id="fEnd" type="time" value="10:00"></label>
+    </div>
+    <div class="f"><span>顏色</span><div class="sw" id="fSw"></div></div>
+    <div class="f"><span>什麼時候</span><div class="dy mode"><button id="mRep">重複</button><button id="mDate">指定日期</button></div></div>
+    <div class="f" id="repBox"><span>重複的日子</span><div class="dy" id="fDy"></div></div>
+    <label class="f" id="dateBox" hidden><span>日期（只在這一天出現）</span><input id="fDate" type="date"></label>
+    <p class="err" id="fErr" role="alert"></p>
+    <div class="acts">
+      <button class="del" id="fDel" hidden>刪除</button>
+      <button id="fCancel">取消</button>
+      <button class="ok" id="fSave">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const COLORS=['#C8431F','#A86F00','#1F7A52','#2563C9','#7A45C4','#C2306A'];
+const DAYN=['日','一','二','三','四','五','六'];
+const ALL=[0,1,2,3,4,5,6];
+let S={events:[],sec:true,h12:false,sound:true};
+const uid=()=>Math.random().toString(36).slice(2,9);
+function dstr(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}
+function todayStr(){return dstr(new Date())}
+let viewDate=todayStr();
+function evOn(ds){
+  const [y,m,d]=ds.split('-').map(Number),wd=new Date(y,m-1,d).getDay();
+  return S.events.filter(e=>e.date?e.date===ds:(e.days||ALL).includes(wd));
+}
+
+function load(){
+  try{const r=localStorage.getItem('sched-clock-v1');if(r){S=Object.assign(S,JSON.parse(r));return true}}catch(e){}
+  return false;
+}
+function save(){try{localStorage.setItem('sched-clock-v1',JSON.stringify(S))}catch(e){}}
+if(!load()){
+  S.events=[
+    {id:uid(),name:'起床與早餐',start:'07:00',end:'08:00',color:COLORS[1],days:ALL},
+    {id:uid(),name:'專心工作',start:'09:00',end:'12:00',color:COLORS[3],days:ALL},
+    {id:uid(),name:'午餐與休息',start:'12:00',end:'13:00',color:COLORS[2],days:ALL},
+    {id:uid(),name:'運動',start:'18:00',end:'19:00',color:COLORS[0],days:ALL},
+    {id:uid(),name:'睡前放鬆',start:'22:00',end:'23:00',color:COLORS[4],days:ALL}
+  ];
+}
+
+const pad=n=>String(n).padStart(2,'0');
+const toMin=s=>{const [h,m]=s.split(':').map(Number);return h*60+m};
+function fmtHM(s){
+  const [h,m]=s.split(':').map(Number);
+  if(!S.h12)return pad(h)+':'+pad(m);
+  return (h<12?'上午 ':'下午 ')+(h%12||12)+':'+pad(m);
+}
+function dur(ms){
+  let t=Math.max(0,Math.ceil(ms/1000));
+  const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;
+  return h>0?h+':'+pad(m)+':'+pad(s):pad(m)+':'+pad(s);
+}
+function daysText(d){
+  if(!d||d.length===7)return '每天';
+  const k=[...d].sort().join('');
+  if(k==='12345')return '平日';
+  if(k==='06')return '週末';
+  return '每週'+[...d].sort((a,b)=>((a+6)%7)-((b+6)%7)).map(i=>DAYN[i]).join('、');
+}
+
+function occ(now){
+  const y=now.getFullYear(),mo=now.getMonth(),dt=now.getDate(),out=[];
+  for(let d=-1;d<=31;d++){
+    const dd=new Date(y,mo,dt+d),wd=dd.getDay(),ds=dstr(dd);
+    for(const e of S.events){
+      if(e.date){if(e.date!==ds)continue}else if(e.days&&!e.days.includes(wd))continue;
+      const [sh,sm]=e.start.split(':').map(Number),[eh,em]=e.end.split(':').map(Number);
+      const s=new Date(y,mo,dt+d,sh,sm).getTime();
+      let t=new Date(y,mo,dt+d,eh,em).getTime();
+      if(t<=s)t=new Date(y,mo,dt+d+1,eh,em).getTime();
+      out.push({e,s,t,d});
+    }
+  }
+  return out;
+}
+
+/* ---------- alerts ---------- */
+let actx=null;
+function unlockAudio(){
+  try{
+    if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended')actx.resume();
+  }catch(e){}
+}
+document.addEventListener('pointerdown',unlockAudio,{once:false});
+function beep(){
+  if(!S.sound||!actx)return;
+  try{
+    [0,.35,.7].forEach((d,i)=>{
+      const o=actx.createOscillator(),g=actx.createGain();
+      o.type='sine';o.frequency.value=i===2?1175:880;
+      g.gain.setValueAtTime(0,actx.currentTime+d);
+      g.gain.linearRampToValueAtTime(.4,actx.currentTime+d+.03);
+      g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d+.3);
+      o.connect(g);g.connect(actx.destination);
+      o.start(actx.currentTime+d);o.stop(actx.currentTime+d+.32);
+    });
+  }catch(e){}
+}
+let toastT=null;
+function fire(e){
+  const t=$('#toast');
+  t.style.setProperty('--c',e.color);
+  t.textContent='現在開始：'+e.name;
+  t.hidden=false;
+  clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,12000);
+  const n=$('#now');n.classList.remove('flash');void n.offsetWidth;n.classList.add('flash');
+  beep();
+  try{navigator.vibrate&&navigator.vibrate([300,150,300])}catch(x){}
+}
+$('#toast').onclick=()=>{$('#toast').hidden=true};
+
+/* ---------- render ---------- */
+let lastId=null,first=true,curEvId=null,lastTs=null;
+function updateNav(){
+  const [y,m,d]=viewDate.split('-').map(Number);
+  $('#dPick').value=viewDate;
+  $('#pTitle').textContent=viewDate===todayStr()?'今日行程':m+'/'+d+'（週'+DAYN[new Date(y,m-1,d).getDay()]+'）行程';
+}
+function renderList(curId){
+  updateNav();
+  const ul=$('#list');ul.innerHTML='';
+  const list=evOn(viewDate);
+  if(!list.length){
+    const li=document.createElement('li');li.className='empty';
+    li.textContent='這天還沒有行程。點「新增行程」來排，時間一到就會提醒你。';
+    ul.append(li);return;
+  }
+  list.sort((a,b)=>toMin(a.start)-toMin(b.start)).forEach(e=>{
+    const li=document.createElement('li');
+    li.className='item num'+(e.id===curId?' on':'');
+    li.style.setProperty('--c',e.color);
+    li.tabIndex=0;
+    li.innerHTML='<div class="t"></div><div class="n"></div><div class="d"></div>';
+    li.querySelector('.t').innerHTML=fmtHM(e.start)+'<br><span>'+fmtHM(e.end)+'</span>';
+    li.querySelector('.n').textContent=e.name;
+    li.querySelector('.d').textContent=e.date?'只有 '+e.date.slice(5).replace('-','/')+' 這一天':daysText(e.days);
+    li.onclick=()=>openEdit(e.id);
+    li.onkeydown=ev=>{if(ev.key==='Enter')openEdit(e.id)};
+    ul.append(li);
+  });
+}
+let curShown=null;
+function tick(){
+  const now=new Date(),n=now.getTime();
+  const h=now.getHours();
+  let hs=S.h12?(h%12||12):pad(h);
+  $('#time').textContent=hs+':'+pad(now.getMinutes())+(S.sec?':'+pad(now.getSeconds()):'');
+  $('#period').textContent=S.h12?(h<12?'上午':'下午'):'';
+  const ts=dstr(now);
+  if(lastTs&&ts!==lastTs&&viewDate===lastTs){viewDate=ts;renderList(curEvId)}
+  lastTs=ts;
+  $('#date').textContent=now.toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+
+  const o=occ(now);
+  const cur=o.filter(x=>x.s<=n&&n<x.t).sort((a,b)=>b.s-a.s)[0];
+  const nx=o.filter(x=>x.s>n).sort((a,b)=>a.s-b.s)[0];
+  const cid=cur?cur.e.id+':'+cur.s:null;
+  if(cid!==lastId){
+    if(!first&&cid)fire(cur.e);
+    lastId=cid;curEvId=cur?cur.e.id:null;
+    renderList(curEvId);
+  }
+  first=false;
+
+  const nowEl=$('#now');
+  if(cur){
+    nowEl.classList.add('live');
+    nowEl.style.setProperty('--c',cur.e.color);
+    $('#nName').textContent=cur.e.name;
+    $('#nRange').textContent=fmtHM(cur.e.start)+' – '+fmtHM(cur.e.end);
+    $('#nLeft').textContent=dur(cur.t-n);
+    $('#fill').style.width=((n-cur.s)/(cur.t-cur.s)*100).toFixed(2)+'%';
+  }else{
+    nowEl.classList.remove('live');
+    $('#nName').textContent='目前沒有行程';
+    $('#nRange').textContent=nx?'空檔時間，可以自由安排':'今天的行程都完成了';
+    $('#fill').style.width='0';
+  }
+
+  if(nx){
+    const wd=new Date(nx.s).getDay();
+    const nd=new Date(nx.s);
+    const pre=nx.d===0?'':nx.d===1?'明天 ':nx.d<7?'週'+DAYN[wd]+' ':(nd.getMonth()+1)+'/'+nd.getDate()+' ';
+    $('#xName').textContent=nx.e.name;
+    $('#xAt').textContent=pre+fmtHM(nx.e.start)+' 開始';
+    $('#xLb').textContent='距離開始';
+    $('#xCd').textContent=dur(nx.s-n);
+  }else{
+    $('#xName').textContent=S.events.length?'沒有接下來的行程':'尚未排入行程';
+    $('#xAt').textContent='';$('#xLb').textContent='';$('#xCd').textContent='';
+  }
+}
+function resync(){first=true;lastId=null;tick();}
+
+/* ---------- editor ---------- */
+let editId=null,selColor=COLORS[3],selDays=[...ALL],selMode='rep';
+function drawMode(){
+  $('#mRep').setAttribute('aria-pressed',selMode==='rep');
+  $('#mDate').setAttribute('aria-pressed',selMode==='date');
+  $('#repBox').hidden=selMode!=='rep';
+  $('#dateBox').hidden=selMode!=='date';
+}
+$('#mRep').onclick=()=>{selMode='rep';drawMode()};
+$('#mDate').onclick=()=>{selMode='date';drawMode()};
+function drawSw(){
+  const w=$('#fSw');w.innerHTML='';
+  COLORS.forEach(c=>{
+    const b=document.createElement('button');
+    b.style.setProperty('--c',c);b.setAttribute('aria-label','顏色');
+    b.setAttribute('aria-pressed',c===selColor);
+    b.onclick=()=>{selColor=c;drawSw()};
+    w.append(b);
+  });
+}
+function drawDy(){
+  const w=$('#fDy');w.innerHTML='';
+  [1,2,3,4,5,6,0].forEach(i=>{
+    const b=document.createElement('button');
+    b.textContent=DAYN[i];
+    b.setAttribute('aria-pressed',selDays.includes(i));
+    b.onclick=()=>{selDays=selDays.includes(i)?selDays.filter(x=>x!==i):[...selDays,i];drawDy()};
+    w.append(b);
+  });
+}
+function openEdit(id){
+  editId=id||null;
+  const e=S.events.find(x=>x.id===id);
+  $('#sTitle').textContent=e?'編輯行程':'新增行程';
+  $('#fName').value=e?e.name:'';
+  $('#fStart').value=e?e.start:'09:00';
+  $('#fEnd').value=e?e.end:'10:00';
+  selColor=e?e.color:COLORS[(S.events.length)%COLORS.length];
+  selDays=e?[...(e.days||ALL)]:[...ALL];
+  selMode=e?(e.date?'date':'rep'):(viewDate!==todayStr()?'date':'rep');
+  $('#fDate').value=(e&&e.date)?e.date:viewDate;
+  $('#fDel').hidden=!e;$('#fErr').textContent='';
+  drawSw();drawDy();drawMode();
+  $('#ov').hidden=false;
+  setTimeout(()=>$('#fName').focus(),50);
+}
+const closeEdit=()=>{$('#ov').hidden=true};
+$('#bAdd').onclick=()=>openEdit(null);
+$('#fCancel').onclick=closeEdit;
+$('#ov').onclick=ev=>{if(ev.target.id==='ov')closeEdit()};
+$('#fSave').onclick=()=>{
+  const name=$('#fName').value.trim(),st=$('#fStart').value,en=$('#fEnd').value;
+  if(!name){$('#fErr').textContent='請輸入行程名稱。';return}
+  if(!st||!en){$('#fErr').textContent='請選擇開始和結束時間。';return}
+  if(st===en){$('#fErr').textContent='開始和結束時間不能相同。';return}
+  if(selMode==='rep'&&!selDays.length){$('#fErr').textContent='請至少選一天重複。';return}
+  const fd=$('#fDate').value;
+  if(selMode==='date'&&!fd){$('#fErr').textContent='請選擇日期。';return}
+  const base={name,start:st,end:en,color:selColor};
+  const data=selMode==='date'?{...base,date:fd,days:null}:{...base,days:[...selDays],date:null};
+  if(editId){Object.assign(S.events.find(x=>x.id===editId),data)}
+  else S.events.push({id:uid(),...data});
+  if(selMode==='date')viewDate=fd;
+  save();closeEdit();resync();
+};
+$('#fDel').onclick=()=>{
+  S.events=S.events.filter(x=>x.id!==editId);
+  save();closeEdit();resync();
+};
+
+/* ---------- toggles ---------- */
+function sync(){
+  $('#bSec').setAttribute('aria-pressed',S.sec);
+  $('#bH12').setAttribute('aria-pressed',S.h12);
+  $('#bSnd').setAttribute('aria-pressed',S.sound);
+}
+$('#bSec').onclick=()=>{S.sec=!S.sec;save();sync();tick()};
+$('#bH12').onclick=()=>{S.h12=!S.h12;save();sync();renderList(null);resync()};
+$('#bSnd').onclick=()=>{S.sound=!S.sound;unlockAudio();if(S.sound)beep();save();sync()};
+
+let wake=null;
+async function setWake(on){
+  try{
+    if(on){wake=await navigator.wakeLock.request('screen');$('#bWake').setAttribute('aria-pressed',true);
+      wake.addEventListener('release',()=>{wake=null;$('#bWake').setAttribute('aria-pressed',false)});}
+    else if(wake){await wake.release();wake=null}
+  }catch(e){$('#bWake').setAttribute('aria-pressed',false);wake=null}
+}
+$('#bWake').onclick=()=>setWake(!wake);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&$('#bWake').getAttribute('aria-pressed')==='true'&&!wake)setWake(true);
+});
+$('#bFull').onclick=()=>{
+  try{
+    if(document.fullscreenElement)document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  }catch(e){}
+};
+document.addEventListener('fullscreenchange',()=>$('#bFull').setAttribute('aria-pressed',!!document.fullscreenElement));
+
+function shiftDay(n){
+  const [y,m,d]=viewDate.split('-').map(Number);
+  viewDate=dstr(new Date(y,m-1,d+n));renderList(curEvId);
+}
+$('#dPrev').onclick=()=>shiftDay(-1);
+$('#dNext').onclick=()=>shiftDay(1);
+$('#dToday').onclick=()=>{viewDate=todayStr();renderList(curEvId)};
+$('#dPick').onchange=()=>{if($('#dPick').value){viewDate=$('#dPick').value;renderList(curEvId)}};
+
+sync();tick();
+setInterval(tick,250);
+function offStatus(){
+  const el=document.getElementById('offl');
+  if(!('serviceWorker' in navigator)){el.textContent='無法離線：網址需要是 https';return}
+  el.textContent=navigator.serviceWorker.controller?'✓ 已可離線使用':'正在準備離線…請重新整理一次';
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('controllerchange',offStatus);
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{document.getElementById('offl').textContent='離線設定失敗：請確認 sw.js 有一起上傳'});
+    navigator.serviceWorker.ready.then(()=>setTimeout(offStatus,600));
+  });
+}
+offStatus();
+</script>
+</body>
+</html>
